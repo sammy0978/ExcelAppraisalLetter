@@ -1,236 +1,99 @@
-'use strict';
+const express = require("express");
+const catalyst = require("zcatalyst-sdk-node");
+const stream = require("stream");
 
-const catalyst = require('zcatalyst-sdk-node');
+const app = express();
 
-module.exports = async (req, res) => {
+// Handle large base64 PDF payloads
+app.use(express.json({ limit: "15mb" }));
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+// Enable CORS
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-    if (req.method === 'OPTIONS') {
-        res.writeHead(204);
-        res.end();
-        return;
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "success",
+    message: "Performance Letter API is running"
+  });
+});
+
+app.post("/send-letter", async (req, res) => {
+  try {
+    const {
+      employeeName,
+      employeeEmail,
+      fileName,
+      pdfBase64
+    } = req.body;
+
+    if (!employeeEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee email is missing"
+      });
     }
 
-    const url = req.url;
-
-    try {
-
-        if (req.method === 'POST' && url === '/generate-letter') {
-            await generateLetter(req, res);
-            return;
-        }
-
-        if (req.method === 'GET' && url === '/get-letter') {
-            await getLetter(req, res);
-            return;
-        }
-
-        if (req.method === 'POST' && url === '/send-letter') {
-            await sendLetter(req, res);
-            return;
-        }
-
-        res.writeHead(404, {
-            'Content-Type': 'application/json'
-        });
-
-        res.write(JSON.stringify({
-            success: false,
-            message: 'Endpoint not found'
-        }));
-
-        res.end();
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.writeHead(500, {
-            'Content-Type': 'application/json'
-        });
-
-        res.write(JSON.stringify({
-            success: false,
-            message: 'Internal server error',
-            error: error.message
-        }));
-
-        res.end();
+    if (!pdfBase64) {
+      return res.status(400).json({
+        success: false,
+        message: "PDF data is missing"
+      });
     }
-};
-
-
-async function generateLetter(req, res) {
 
     const catalystApp = catalyst.initialize(req);
 
-    const body = await getRequestBody(req);
+    // Convert Base64 directly to memory stream
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+    const attachmentStream = new stream.PassThrough();
+    attachmentStream.end(pdfBuffer);
+    attachmentStream.path = fileName || `Performance_Letter_${Date.now()}.pdf`;
 
-    const performanceId = body.performanceId;
+    await catalystApp.email().sendMail({
+      // ⚠️ REPLACE with your verified sender address from Catalyst Console -> Mail
+      from_email: "sarmistha.a@race2cloud.com", 
+      to_email: [employeeEmail],
+      subject: `Performance Letter - ${employeeName || "Employee"}`,
+      html_mode: true,
+      content: `Dear ${employeeName || "Employee"},
 
-    if (!performanceId) {
+Please find your approved performance letter attached to this email.
 
-        res.writeHead(400, {
-            'Content-Type': 'application/json'
-        });
 
-        res.write(JSON.stringify({
-            success: false,
-            message: 'performanceId is required'
-        }));
+Regards,
 
-        res.end();
-        return;
-    }
 
-    const query =
-        `SELECT * FROM Performance WHERE Performance_ID = '${performanceId}'`;
+Human Resources Team
 
-    const result = await catalystApp
-        .zcql()
-        .executeZCQLQuery(query);
+  `,
+  attachments: [attachmentStream]
+});
 
-    if (!result || result.length === 0) {
+return res.status(200).json({
+  success: true,
+  message: "Performance letter sent successfully"
+});
+} catch (error) {
+console.error("Send letter error:", error);
 
-        res.writeHead(404, {
-            'Content-Type': 'application/json'
-        });
+// Capture raw error details from Catalyst SDK
+const detailedError =
+  (error && error.message) ||
+  (typeof error === "object" ? JSON.stringify(error) : String(error));
 
-        res.write(JSON.stringify({
-            success: false,
-            message: 'Performance record not found'
-        }));
-
-        res.end();
-        return;
-    }
-
-    const performance = result[0].Performance;
-
-    const hike = performance.Hike_Percentage;
-    const bonus = performance.Performance_Bonus;
-
-    if (hike === null || hike === undefined ||
-        bonus === null || bonus === undefined) {
-
-        res.writeHead(400, {
-            'Content-Type': 'application/json'
-        });
-
-        res.write(JSON.stringify({
-            success: false,
-            message: 'Hike percentage and performance bonus are required'
-        }));
-
-        res.end();
-        return;
-    }
-
-    if (Number(hike) < 0 || Number(bonus) < 0) {
-
-        res.writeHead(400, {
-            'Content-Type': 'application/json'
-        });
-
-        res.write(JSON.stringify({
-            success: false,
-            message: 'Hike percentage and performance bonus cannot be negative'
-        }));
-
-        res.end();
-        return;
-    }
-
-    let letterType = '';
-
-    if (Number(hike) > 0 && Number(bonus) === 0) {
-        letterType = 'Hike Letter';
-    }
-    else if (Number(hike) === 0 && Number(bonus) > 0) {
-        letterType = 'Performance Bonus Letter';
-    }
-    else if (Number(hike) > 0 && Number(bonus) > 0) {
-        letterType = 'Hike + Performance Bonus Letter';
-    }
-    else {
-        letterType = 'No Letter';
-    }
-
-    res.writeHead(200, {
-        'Content-Type': 'application/json'
-    });
-
-    res.write(JSON.stringify({
-        success: true,
-        performanceId: performanceId,
-        hikePercentage: hike,
-        performanceBonus: bonus,
-        letterType: letterType
-    }));
-
-    res.end();
+return res.status(500).json({
+  success: false,
+  message: detailedError || "Failed to send performance letter"
+});
 }
+});
 
-
-async function getLetter(req, res) {
-
-    res.writeHead(200, {
-        'Content-Type': 'application/json'
-    });
-
-    res.write(JSON.stringify({
-        success: true,
-        message: 'Get letter endpoint is ready'
-    }));
-
-    res.end();
-}
-
-
-async function sendLetter(req, res) {
-
-    res.writeHead(200, {
-        'Content-Type': 'application/json'
-    });
-
-    res.write(JSON.stringify({
-        success: true,
-        message: 'Send letter endpoint is ready'
-    }));
-
-    res.end();
-}
-
-
-function getRequestBody(req) {
-
-    return new Promise((resolve, reject) => {
-
-        let body = '';
-
-        req.on('data', chunk => {
-            body += chunk;
-        });
-
-        req.on('end', () => {
-
-            if (!body) {
-                resolve({});
-                return;
-            }
-
-            try {
-                resolve(JSON.parse(body));
-            } catch (error) {
-                reject(error);
-            }
-        });
-
-        req.on('error', error => {
-            reject(error);
-        });
-    });
-}
+module.exports = app;

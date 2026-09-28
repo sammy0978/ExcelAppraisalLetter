@@ -6,6 +6,7 @@
 	"dependencies": {
 		"@zcatalyst/auth": "latest",
 		"@zcatalyst/cache": "latest",
+		"express": "^5.2.1",
 		"zcatalyst-sdk-node": "^3.4.0"
 	}
 }
