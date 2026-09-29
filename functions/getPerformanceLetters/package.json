@@ -1,0 +1,11 @@
+{
+  "name": "catalyst",
+  "version": "1.0.0",
+  "description": "Basic Node Template With Routing For Catalyst App Logic",
+  "main": "index.js",
+  "scripts": {},
+  "dependencies": {
+    "express": "^5.2.1",
+    "zcatalyst-sdk-node": "^3.4.0"
+  }
+}

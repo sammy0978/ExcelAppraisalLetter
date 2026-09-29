@@ -1,13 +1,8 @@
-import React from "react";
-import PerformanceLetters from "./pages/PerformanceLetters";
-import "./App.css";
+import './App.css';
+import Dashboard from './pages/Dashboard';
 
 function App() {
-  return (
-    <div className="app">
-      <PerformanceLetters />
-    </div>
-  );
+  return <Dashboard />;
 }
 
 export default App;

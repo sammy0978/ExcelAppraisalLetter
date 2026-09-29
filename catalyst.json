@@ -1,7 +1,8 @@
 {
   "functions": {
     "targets": [
-      "performance_letter_automation_function"
+      "performance_letter_automation_function",
+      "getPerformanceLetters"
     ],
     "ignore": [],
     "source": "functions"
