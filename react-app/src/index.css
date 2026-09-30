@@ -1,0 +1,9 @@
+:root{
+  --bg:#f4f6f9; --panel:#fff; --line:#e3e7ee; --text:#1e293b; --muted:#64748b;
+  --accent:#3346c8; --accent-soft:#eef0fc;
+  --ok:#0f7a4f; --ok-bg:#ecf8f2; --ok-bg2:#e0f2e9; --ok-edge:#10b981;
+  --warn:#a15c00; --warn-bg:#fffaf0; --warn-bg2:#fdf1dc; --warn-edge:#f59e0b;
+  --band:#f7f9fc;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
