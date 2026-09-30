@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "targets": [
+      "employeesapi",
+      "appraisalhistoryapi",
+      "appraisalauditapi",
+      "employeemasterapi",
+      "payrollcycleapi",
+      "budgetmasterapi"
+    ],
+    "ignore": [],
+    "source": "functions"
+  }
+}
